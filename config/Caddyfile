@@ -1,0 +1,30 @@
+{
+	admin off
+	auto_https off
+	persist_config off
+	storage file_system "{$COLLAPSE_CADDY_DATA}"
+	# Runtime errors can include request URLs. Do not retain tokens or access logs.
+	log {
+		output discard
+	}
+}
+
+http://127.0.0.1:{$COLLAPSE_WEB_PORT:8085} {
+	bind 127.0.0.1
+	header {
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Embedder-Policy require-corp
+	}
+	handle /v0/* {
+		# Standard proxying preserves authentication, media ranges, and WebSockets.
+		reverse_proxy 127.0.0.1:6060
+	}
+	handle {
+		root * "{env.COLLAPSE_WEB_DIR}"
+		header Cache-Control no-store
+		# Client-owned routes support direct links and browser reloads.
+		@client_route path / /chats /chats/* /contacts /contacts/* /profile /login
+		rewrite @client_route /index.html
+		file_server
+	}
+}

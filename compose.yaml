@@ -1,0 +1,41 @@
+name: collapse
+services:
+  postgres:
+    image: postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup.mjs first}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d postgres]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  tinode:
+    build: .
+    image: collapse-tinode:0.25.3-media1
+    # Upstream publishes this image for amd64; Docker Desktop emulates on Apple Silicon.
+    platform: linux/amd64
+    environment:
+      TZ: UTC
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:6060:6060"
+    volumes:
+      - ./.local/tinode.docker.json:/config/tinode.json:ro
+      - uploads:/var/lib/tinode/uploads
+    # No sample users/bots/webapp. The only protocol extension is get.media.
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - ./init-db --config=/config/tinode.json --data= && exec ./tinode --config=/config/tinode.json --static_data=- >/dev/null 2>&1
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  uploads:

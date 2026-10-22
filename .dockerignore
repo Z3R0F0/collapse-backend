@@ -1,0 +1,6 @@
+**
+!Dockerfile
+!scripts/
+!scripts/build-server.mjs
+!overlay/
+!overlay/**
